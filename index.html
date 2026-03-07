@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akıllı Kozmetik Asistanı</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; text-align: center; padding: 50px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; }
+        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;}
+        button { padding: 12px 25px; background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s;}
+        button:hover { background-color: #218838; }
+        #sonuc { margin-top: 30px; text-align: left; display: none; padding: 20px; border-top: 2px solid #eee;}
+        .skor { font-size: 26px; font-weight: bold; color: #007bff; text-align: center; margin-bottom: 20px;}
+        .faydali { color: #155724; background-color: #d4edda; padding: 10px; border-radius: 5px; list-style-type: none; margin-bottom: 10px;}
+        .zararli { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 5px; list-style-type: none;}
+        li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>✨ Akıllı Kozmetik Asistanı</h2>
+        <p>Watsons ürün linkini yapıştırın, içeriğini yapay zeka ile analiz edelim!</p>
+        
+        <input type="text" id="urlInput" placeholder="Buraya ürün linkini yapıştırın...">
+        <br>
+        <button onclick="analizEt()">Analiz Et 🚀</button>
+
+        <div id="sonuc">
+            <div class="skor" id="skorAlani">Skor Hesaplanıyor... ⏳</div>
+            
+            <h3 style="color: #28a745;">💚 Öne Çıkan Faydalı İçerikler:</h3>
+            <ul id="faydaliListe" class="faydali"></ul>
+            
+            <h3 style="color: #dc3545;">⚠️ Dikkat Edilmesi Gerekenler:</h3>
+            <ul id="riskliListe" class="zararli"></ul>
+        </div>
+    </div>
+
+    <script>
+        async function analizEt() {
+            const url = document.getElementById("urlInput").value;
+            const sonucDiv = document.getElementById("sonuc");
+            const skorAlani = document.getElementById("skorAlani");
+            const faydaliListe = document.getElementById("faydaliListe");
+            const riskliListe = document.getElementById("riskliListe");
+
+            if(!url) { alert("Lütfen bir Watsons linki girin!"); return; }
+
+            // Yükleniyor ekranını göster
+            sonucDiv.style.display = "block";
+            skorAlani.innerHTML = "Site kazınıyor ve analiz ediliyor... Lütfen bekleyin ⏳";
+            faydaliListe.innerHTML = "";
+            riskliListe.innerHTML = "";
+
+            try {
+                // Bizim yazdığımız API'ye istek atıyoruz
+                const response = await fetch("/analiz-et", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if(response.ok) {
+                    skorAlani.innerHTML = `🎯 Cilt Uyumluluk Skoru: ${data.cilt_uyumluluk_skoru} / 100`;
+                    
+                    data.faydali_icerikler.forEach(item => {
+                        faydaliListe.innerHTML += `<li><b>${item.madde}</b>: ${item.fayda}</li>`;
+                    });
+
+                    data.riskli_icerikler.forEach(item => {
+                        riskliListe.innerHTML += `<li><b>${item.madde}</b>: ${item.uyari}</li>`;
+                    });
+                    
+                    if(data.riskli_icerikler.length === 0) riskliListe.innerHTML = "<li>Riskli içerik bulunamadı! Harika bir ürün. 🎉</li>";
+                    if(data.faydali_icerikler.length === 0) faydaliListe.innerHTML = "<li>Sistemdeki öne çıkan faydalı içeriklerden bulunamadı.</li>";
+
+                } else {
+                    skorAlani.innerHTML = "❌ Hata: " + data.detail;
+                }
+
+            } catch (error) {
+                skorAlani.innerHTML = "❌ Sunucuya bağlanılamadı.";
+            }
+        }
+    </script>
+</body>
+</html>
