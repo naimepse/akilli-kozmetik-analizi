@@ -1,22 +1,20 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse # HTML dosyasını okumak için ekledik!
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from playwright.sync_api import sync_playwright
 import sqlite3
 
 app = FastAPI(
     title="Akıllı Kozmetik Analiz API",
-    version="4.0.0" 
+    version="4.1.0" # Zeka güncellemesi!
 )
 
 class LinkIstegi(BaseModel):
     url: str
 
-# --- YENİ EKLENEN KISIM: Ana Sayfa Yönlendirmesi ---
 @app.get("/")
 def ana_sayfayi_goster():
     return FileResponse("index.html")
-# ---------------------------------------------------
 
 @app.post("/analiz-et")
 def urun_analiz_et_api(istek: LinkIstegi):
@@ -40,6 +38,13 @@ def urun_analiz_et_api(istek: LinkIstegi):
                 icerik_metni = hedef_kutu.inner_text()
                 sadece_icerik = icerik_metni.split("İmalatçı Bilgisi")[0].replace("Ürün İçerik Bilgisi", "").strip()
                 temiz_liste = [madde.strip().capitalize() for madde in sadece_icerik.split(",") if madde.strip()]
+                
+                # --- YENİ EKLENEN ZEKİ KONTROL ---
+                # Eğer kutu var ama içi boşsa veya virgülle ayrılmış düzgün bir liste yoksa:
+                if len(temiz_liste) == 0:
+                    browser.close()
+                    raise HTTPException(status_code=404, detail="Bu ürünün içerik listesi sitede bulunamadı veya Watsons formatına uygun değil.")
+                # ---------------------------------
                 
                 urun_skoru = 100
                 zararli_bulunanlar = []
@@ -75,4 +80,7 @@ def urun_analiz_et_api(istek: LinkIstegi):
                 
         except Exception as e:
             browser.close()
-            raise HTTPException(status_code=500, detail=f"Sunucu hatası: {str(e)}")
+            # Sunucu hatası mesajını daha kullanıcı dostu yapalım
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(status_code=500, detail="Siteye bağlanırken bir sorun oluştu.")
